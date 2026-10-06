@@ -4,7 +4,7 @@ const tenantService = require('../services/tenant.service');
 /**
  * @desc    Create a new tenant
  * @route   POST /api/tenants
- * @access  Public
+ * @access  Private (Admin only)
  */
 const createTenant = async (req, res, next) => {
   try {
@@ -30,7 +30,7 @@ const createTenant = async (req, res, next) => {
 /**
  * @desc    Get tenant details by ID
  * @route   GET /api/tenants/:id
- * @access  Public
+ * @access  Private (Tenant-scoped access)
  */
 const getTenantById = async (req, res, next) => {
   try {
@@ -39,6 +39,17 @@ const getTenantById = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       const error = new Error('Invalid tenant ID format');
       error.statusCode = 400;
+      throw error;
+    }
+
+    // Tenant Isolation Enforcement: Users can only access their own organization's tenant details
+    const userTenantIdStr = req.user.tenantId._id
+      ? req.user.tenantId._id.toString()
+      : req.user.tenantId.toString();
+
+    if (userTenantIdStr !== id) {
+      const error = new Error("Forbidden: Access denied. Cannot access another organization's data");
+      error.statusCode = 403;
       throw error;
     }
 
